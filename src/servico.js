@@ -32,6 +32,8 @@ export function criarServico(repositorio) {
       return repositorio.listar(busca, coluna);
     },
 
+    listarPorAutor: (autor) => repositorio.listarPorAutor(autor),
+
     async buscar(id) {
       const livro = await repositorio.buscar(id);
       if (!livro) throw new ErroNaoEncontrado();
