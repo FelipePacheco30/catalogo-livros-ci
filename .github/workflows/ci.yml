@@ -1,0 +1,159 @@
+name: CI
+
+# Gatilho: todo pull request para a main. O push na main (merge do PR)
+# roda o mesmo pipeline e, no final, publica a imagem.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  # 1 e 2 — Análise estática (ESLint) e análise de formatação (Prettier).
+  qualidade:
+    name: Análise estática e formatação
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Análise estática (ESLint)
+        run: npm run lint
+      - name: Análise de formatação (Prettier)
+        run: npm run format:check
+
+  # 3 — Análise estática de segurança: CodeQL (SAST) no código e npm audit nas dependências.
+  seguranca:
+    name: Análise de segurança
+    needs: qualidade
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+      - uses: github/codeql-action/analyze@v4
+        with:
+          output: sarif
+      - name: Falhar se o CodeQL encontrou vulnerabilidades
+        run: |
+          jq -r '.runs[].results[] | "::error file=\(.locations[0].physicalLocation.artifactLocation.uri),line=\(.locations[0].physicalLocation.region.startLine)::\(.ruleId): \(.message.text)"' sarif/*.sarif
+          test "$(jq '[.runs[].results[]] | length' sarif/*.sarif)" -eq 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Auditar dependências (npm audit)
+        run: npm audit --audit-level=high
+
+  # 4 — Build: gera o bundle de produção e guarda a pasta dist/ como artefato.
+  build:
+    name: Build
+    needs: seguranca
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-artifact@v5
+        with:
+          name: dist
+          path: dist/
+
+  # 5 — Testes unitários: regras de negócio isoladas, sem banco de dados.
+  testes-unitarios:
+    name: Testes unitários
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:unit
+
+  # 6 — Testes de integração: API + PostgreSQL real, executado como serviço do job.
+  testes-integracao:
+    name: Testes de integração
+    needs: testes-unitarios
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: catalogo_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/catalogo_test
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:integration
+
+  # 7 — Criação de imagem: usa o artefato do build, testa o contêiner com o banco e publica no GHCR.
+  imagem:
+    name: Criar imagem Docker
+    needs: testes-integracao
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: catalogo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
+        with:
+          name: dist
+          path: dist/
+      - name: Construir a imagem
+        run: docker build -t api:${{ github.sha }} .
+      - name: Testar o contêiner com o banco
+        run: |
+          docker run -d --network host \
+            -e DATABASE_URL=postgres://postgres:postgres@localhost:5432/catalogo \
+            api:${{ github.sha }}
+          sleep 5
+          curl --fail http://localhost:3000/health
+      - name: Publicar no GitHub Container Registry
+        if: github.event_name == 'push'
+        run: |
+          IMAGEM=ghcr.io/${GITHUB_REPOSITORY,,}
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker tag api:${{ github.sha }} $IMAGEM:latest
+          docker push $IMAGEM:latest
