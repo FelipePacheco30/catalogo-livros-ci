@@ -62,6 +62,13 @@ describe('API /api/livros com PostgreSQL', () => {
     expect(filtrados.body.map((l) => l.titulo)).toEqual(['Vidas Secas']);
   });
 
+  it('GET ordena pelo campo informado em ?ordem=', async () => {
+    await request(app).post('/api/livros').send(vidasSecas);
+    await request(app).post('/api/livros').send(domCasmurro);
+    const resposta = await request(app).get('/api/livros?ordem=ano');
+    expect(resposta.body.map((l) => l.ano)).toEqual([1899, 1938]);
+  });
+
   it('GET /:id retorna o livro ou 404', async () => {
     await request(app).post('/api/livros').send(domCasmurro);
     expect((await request(app).get('/api/livros/1')).body.titulo).toBe('Dom Casmurro');
