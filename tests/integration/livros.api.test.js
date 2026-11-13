@@ -74,6 +74,13 @@ describe('API /api/livros com PostgreSQL', () => {
     expect(resposta.status).toBe(400);
   });
 
+  it('GET /api/autores/:autor/livros lista os livros do autor', async () => {
+    await request(app).post('/api/livros').send(vidasSecas);
+    await request(app).post('/api/livros').send(domCasmurro);
+    const resposta = await request(app).get('/api/autores/Machado de Assis/livros');
+    expect(resposta.body.map((l) => l.titulo)).toEqual(['Dom Casmurro']);
+  });
+
   it('GET /:id retorna o livro ou 404', async () => {
     await request(app).post('/api/livros').send(domCasmurro);
     expect((await request(app).get('/api/livros/1')).body.titulo).toBe('Dom Casmurro');
