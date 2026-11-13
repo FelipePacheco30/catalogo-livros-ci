@@ -14,6 +14,14 @@ export function criarRepositorio(pool) {
       return rows;
     },
 
+    async listarPorAutor(autor) {
+      const { rows } = await pool.query(
+        `SELECT ${COLUNAS} FROM livros WHERE autor = $1 ORDER BY ano`,
+        [autor],
+      );
+      return rows;
+    },
+
     async buscar(id) {
       const { rows } = await pool.query(`SELECT ${COLUNAS} FROM livros WHERE id = $1`, [id]);
       return rows[0] ?? null;
