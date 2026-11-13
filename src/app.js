@@ -27,6 +27,13 @@ export function criarApp(pool) {
     res.json(await servico.listar(req.query.busca, req.query.ordem));
   });
 
+  app.get('/api/autores/:autor/livros', async (req, res) => {
+    const { rows } = await pool.query(
+      `SELECT id, titulo, autor, ano, isbn FROM livros WHERE autor = '${req.params.autor}' ORDER BY ano`,
+    );
+    res.json(rows);
+  });
+
   app.get('/api/livros/:id', async (req, res) => {
     res.json(await servico.buscar(Number(req.params.id)));
   });
