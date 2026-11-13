@@ -19,7 +19,7 @@ export function criarServico(repositorio) {
   }
 
   return {
-    listar: (busca) => repositorio.listar(busca),
+    listar: (busca, ordem) => repositorio.listar(busca, ordem),
 
     async buscar(id) {
       const livro = await repositorio.buscar(id);
