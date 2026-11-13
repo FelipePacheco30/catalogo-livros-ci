@@ -1,4 +1,5 @@
 import express from 'express';
+import { rateLimit } from 'express-rate-limit';
 import { ErroValidacao } from './livro.js';
 import { criarRepositorio } from './repositorio.js';
 import { criarServico, ErroConflito, ErroNaoEncontrado } from './servico.js';
@@ -8,6 +9,10 @@ export function criarApp(pool) {
   const app = express();
   app.disable('x-powered-by');
   app.use(express.json());
+  // Limita cada IP a 100 requisições por minuto (proteção contra abuso e negação de serviço).
+  app.use(
+    rateLimit({ windowMs: 60_000, limit: 100, standardHeaders: 'draft-8', legacyHeaders: false }),
+  );
 
   app.get('/health', async (_req, res) => {
     try {
