@@ -2,13 +2,13 @@ const COLUNAS = 'id, titulo, autor, ano, isbn';
 
 export function criarRepositorio(pool) {
   return {
-    async listar(busca) {
+    async listar(busca, ordem = 'titulo') {
       if (!busca) {
-        const { rows } = await pool.query(`SELECT ${COLUNAS} FROM livros ORDER BY titulo`);
+        const { rows } = await pool.query(`SELECT ${COLUNAS} FROM livros ORDER BY ${ordem}`);
         return rows;
       }
       const { rows } = await pool.query(
-        `SELECT ${COLUNAS} FROM livros WHERE titulo ILIKE $1 OR autor ILIKE $1 ORDER BY titulo`,
+        `SELECT ${COLUNAS} FROM livros WHERE titulo ILIKE $1 OR autor ILIKE $1 ORDER BY ${ordem}`,
         [`%${busca}%`],
       );
       return rows;
