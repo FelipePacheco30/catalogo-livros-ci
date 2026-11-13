@@ -1,4 +1,4 @@
-import { validarLivro } from './livro.js';
+import { ErroValidacao, validarLivro } from './livro.js';
 
 export class ErroNaoEncontrado extends Error {
   constructor() {
@@ -12,6 +12,13 @@ export class ErroConflito extends Error {
   }
 }
 
+// Nomes de coluna não podem ser parâmetros ($1) no ORDER BY: só valores desta lista chegam ao SQL.
+const ORDENS = new Map([
+  ['titulo', 'titulo'],
+  ['autor', 'autor'],
+  ['ano', 'ano'],
+]);
+
 export function criarServico(repositorio) {
   async function garantirIsbnUnico(isbn, idAtual) {
     const existente = await repositorio.buscarPorIsbn(isbn);
@@ -19,7 +26,11 @@ export function criarServico(repositorio) {
   }
 
   return {
-    listar: (busca, ordem) => repositorio.listar(busca, ordem),
+    listar(busca, ordem = 'titulo') {
+      const coluna = ORDENS.get(ordem);
+      if (!coluna) throw new ErroValidacao(['A ordem deve ser titulo, autor ou ano']);
+      return repositorio.listar(busca, coluna);
+    },
 
     async buscar(id) {
       const livro = await repositorio.buscar(id);
