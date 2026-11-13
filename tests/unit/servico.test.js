@@ -66,6 +66,11 @@ describe('serviço de livros', () => {
     await expect(servico.atualizar(id, livro)).rejects.toThrow(ErroConflito);
   });
 
+  it('só aceita ordenar por titulo, autor ou ano', async () => {
+    expect(() => servico.listar(undefined, '(SELECT 1 FROM pg_sleep(3))')).toThrow(ErroValidacao);
+    await expect(servico.listar(undefined, 'ano')).resolves.toEqual([]);
+  });
+
   it('lança ErroNaoEncontrado para id inexistente', async () => {
     await expect(servico.buscar(99)).rejects.toThrow(ErroNaoEncontrado);
     await expect(servico.atualizar(99, livro)).rejects.toThrow(ErroNaoEncontrado);

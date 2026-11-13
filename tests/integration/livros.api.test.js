@@ -69,6 +69,11 @@ describe('API /api/livros com PostgreSQL', () => {
     expect(resposta.body.map((l) => l.ano)).toEqual([1899, 1938]);
   });
 
+  it('GET retorna 400 para ordem fora da lista permitida', async () => {
+    const resposta = await request(app).get('/api/livros?ordem=(SELECT 1 FROM pg_sleep(3))');
+    expect(resposta.status).toBe(400);
+  });
+
   it('GET /:id retorna o livro ou 404', async () => {
     await request(app).post('/api/livros').send(domCasmurro);
     expect((await request(app).get('/api/livros/1')).body.titulo).toBe('Dom Casmurro');
