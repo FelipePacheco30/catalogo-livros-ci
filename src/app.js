@@ -24,7 +24,7 @@ export function criarApp(pool) {
   });
 
   app.get('/api/livros', async (req, res) => {
-    res.json(await servico.listar(req.query.busca));
+    res.json(await servico.listar(req.query.busca, req.query.ordem));
   });
 
   app.get('/api/livros/:id', async (req, res) => {
