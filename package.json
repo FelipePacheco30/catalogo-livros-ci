@@ -1,0 +1,35 @@
+{
+  "name": "catalogo-livros-ci",
+  "version": "1.0.0",
+  "description": "API REST de catálogo de livros com PostgreSQL e pipeline de CI no GitHub Actions.",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node dist/server.cjs",
+    "dev": "node --watch src/server.js",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "build": "esbuild src/server.js --bundle --minify --platform=node --target=node24 --external:pg-native --outfile=dist/server.cjs",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration"
+  },
+  "author": "Felipe Ferreira Pacheco",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^5.3.0",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.15.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.14.0",
+    "prettier": "^3.10.1",
+    "supertest": "^7.3.2",
+    "vitest": "^5.1.0"
+  }
+}
